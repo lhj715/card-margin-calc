@@ -101,9 +101,17 @@
     </div>
 
     <div id="installBox" class="hide">
-      <label>할부 수수료 (카드 앱/명세서에 찍힌 금액)</label>
-      <input type="number" id="feeDirect" inputmode="numeric" placeholder="무이자면 0" value="0">
-      <div class="note" style="margin-top:6px;">카드 앱에서 본 할부 수수료 금액을 그대로 넣으면 제일 정확해요.</div>
+      <div class="row2">
+        <div>
+          <label>할부 개월수</label>
+          <input type="number" id="months" inputmode="numeric" placeholder="예) 3" value="3">
+        </div>
+        <div>
+          <label>한 달 할부 수수료</label>
+          <input type="number" id="feeMonthly" inputmode="numeric" placeholder="무이자면 0" value="0">
+        </div>
+      </div>
+      <div class="note" style="margin-top:6px;">카드 앱 할부 내역의 '한 달 수수료'와 '개월수'를 넣으면 총 수수료가 자동 계산돼요. (무이자면 0)</div>
     </div>
 
     <label>④ 마진율 (%)</label>
@@ -236,7 +244,9 @@
 
     let fee = 0;
     if (payMode === 'install') {
-      fee = parseFloat(document.getElementById('feeDirect').value) || 0;
+      const months = parseFloat(document.getElementById('months').value) || 0;
+      const feeMonthly = parseFloat(document.getElementById('feeMonthly').value) || 0;
+      fee = feeMonthly * months;
     }
 
     const cost = original + fee;
@@ -252,7 +262,7 @@
     document.getElementById('feeRow').style.display = (payMode === 'install') ? 'flex' : 'none';
   }
 
-  ['amount','discount','margin','feeDirect'].forEach(id => {
+  ['amount','discount','margin','months','feeMonthly'].forEach(id => {
     document.getElementById(id).addEventListener('input', calc);
   });
 
