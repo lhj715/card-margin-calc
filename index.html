@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>카드 마진 계산기</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+    background: #f2f4f7; margin: 0; padding: 14px; color: #1a1a1a;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 14px;
+  }
+  h1 { font-size: 20px; margin: 0 0 2px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: #444; }
+  label { display: block; font-size: 14px; font-weight: 600; margin: 16px 0 7px; }
+  label:first-of-type { margin-top: 0; }
+  input, select {
+    width: 100%; font-size: 18px; padding: 11px 13px;
+    border: 1.5px solid #d8dde6; border-radius: 10px; outline: none; background: #fff;
+  }
+  input[inputmode=numeric], #amount { font-size: 22px; }
+  input:focus, select:focus { border-color: #3b82f6; }
+  .big-input { font-size: 22px; }
+  .pills { display: flex; gap: 8px; margin-top: 7px; }
+  .pill {
+    flex: 1; text-align: center; padding: 11px 8px; border: 1.5px solid #d8dde6;
+    border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; background: #fff; user-select: none;
+  }
+  .pill.on { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .btn {
+    width: 100%; padding: 13px; border: none; border-radius: 10px; background: #3b82f6;
+    color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 14px;
+  }
+  .btn.ghost { background: #eef2f7; color: #3b82f6; }
+  .row2 { display: flex; gap: 10px; }
+  .row2 > div { flex: 1; }
+  .result { background: #f0f6ff; border-radius: 12px; padding: 16px; margin-top: 4px; }
+  .rr { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; }
+  .rr .k { color: #555; font-size: 14px; }
+  .rr .v { font-size: 17px; font-weight: 600; }
+  .rr.big .v { font-size: 26px; color: #1d4ed8; }
+  .rr.big .k { font-size: 15px; font-weight: 700; color: #1d4ed8; }
+  .rr.fee .v { color: #c2410c; }
+  .divider { height: 1px; background: #d6e3f5; margin: 4px 0; }
+  .won { font-size: 13px; color: #999; font-weight: 400; }
+  .note { font-size: 12px; color: #999; margin-top: 12px; line-height: 1.5; }
+  .cardform { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #ddd; }
+  .cardform.show { display: block; }
+  .del { color: #ef4444; font-size: 13px; background: none; border: none; cursor: pointer; padding: 6px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h1>카드 마진 계산기</h1>
+    <div class="sub">할인·할부 수수료 되돌려서 실제 받을 금액 계산</div>
+  </div>
+
+  <!-- 내 카드 -->
+  <div class="card">
+    <h2>💳 내 카드</h2>
+    <select id="cardSelect"></select>
+    <div class="row2" style="margin-top:10px;">
+      <div><button class="btn ghost" id="addCardBtn">+ 카드 추가</button></div>
+      <div><button class="btn ghost" id="delCardBtn" style="background:#fdecec;color:#ef4444;">선택 카드 삭제</button></div>
+    </div>
+
+    <div class="cardform" id="cardForm">
+      <label>카드회사 이름</label>
+      <input id="cf_company" placeholder="예) 신한, 삼성, 현대">
+      <label>카드 뒷번호 (4자리)</label>
+      <input id="cf_last4" inputmode="numeric" maxlength="4" placeholder="예) 1234">
+      <label>이 카드 할인율 (%)</label>
+      <input id="cf_disc" inputmode="decimal" placeholder="예) 1.2">
+      <button class="btn" id="saveCardBtn">저장</button>
+    </div>
+  </div>
+
+  <!-- 계산 -->
+  <div class="card">
+    <h2>🧮 계산</h2>
+
+    <label>① 카드에 찍힌 금액 (할인 반영된 금액)</label>
+    <input type="number" id="amount" inputmode="numeric" placeholder="예) 98800">
+
+    <label>② 할인율 (%) <span style="font-weight:400;color:#999">— 카드 고르면 자동</span></label>
+    <input type="number" id="discount" inputmode="decimal" class="big-input" value="1.2">
+
+    <label>③ 결제 방식</label>
+    <div class="pills" id="payPills">
+      <div class="pill on" data-v="lump">일시불</div>
+      <div class="pill" data-v="install">할부</div>
+    </div>
+
+    <div id="installBox" class="hide">
+      <div class="row2">
+        <div>
+          <label>할부 개월수</label>
+          <input type="number" id="months" inputmode="numeric" value="3">
+        </div>
+        <div>
+          <label>할부 연이율 (%)</label>
+          <input type="number" id="rate" inputmode="decimal" placeholder="무이자면 0" value="0">
+        </div>
+      </div>
+    </div>
+
+    <label>④ 마진율 (%)</label>
+    <input type="number" id="margin" inputmode="decimal" class="big-input" value="3">
+
+    <div class="result">
+      <div class="rr">
+        <span class="k">할인 전 원래 금액</span>
+        <span class="v"><span id="original">0</span> <span class="won">원</span></span>
+      </div>
+      <div class="rr fee" id="feeRow">
+        <span class="k">할부 수수료</span>
+        <span class="v">+<span id="fee">0</span> <span class="won">원</span></span>
+      </div>
+      <div class="rr">
+        <span class="k">실제 총비용</span>
+        <span class="v"><span id="cost">0</span> <span class="won">원</span></span>
+      </div>
+      <div class="rr">
+        <span class="k">붙는 마진액</span>
+        <span class="v">+<span id="marginAmt">0</span> <span class="won">원</span></span>
+      </div>
+      <div class="divider"></div>
+      <div class="rr big">
+        <span class="k">실제 받아야 할 금액</span>
+        <span class="v"><span id="final">0</span> <span class="won">원</span></span>
+      </div>
+    </div>
+
+    <div class="note">
+      원래 금액 = 찍힌 금액 ÷ (1 − 할인율)<br>
+      할부 수수료 = 찍힌 금액 × (연이율÷12) × (개월수+1)÷2<br>
+      받아야 할 금액 = (원래 금액 + 할부 수수료) × (1 + 마진율)
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- 카드 저장 ----------
+  function loadCards() {
+    try { return JSON.parse(localStorage.getItem('cards') || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveCards(c) { localStorage.setItem('cards', JSON.stringify(c)); }
+
+  function renderCards() {
+    const cards = loadCards();
+    const sel = document.getElementById('cardSelect');
+    sel.innerHTML = '';
+    if (cards.length === 0) {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '(저장된 카드 없음 — 추가하세요)';
+      sel.appendChild(o);
+      return;
+    }
+    cards.forEach((c, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = `${c.company} ${c.last4} (할인 ${c.disc}%)`;
+      sel.appendChild(o);
+    });
+    applySelectedCard();
+  }
+
+  function applySelectedCard() {
+    const cards = loadCards();
+    const i = document.getElementById('cardSelect').value;
+    if (i === '' || !cards[i]) return;
+    document.getElementById('discount').value = cards[i].disc;
+    calc();
+  }
+
+  document.getElementById('addCardBtn').addEventListener('click', () => {
+    document.getElementById('cardForm').classList.toggle('show');
+  });
+
+  document.getElementById('saveCardBtn').addEventListener('click', () => {
+    const company = document.getElementById('cf_company').value.trim();
+    const last4 = document.getElementById('cf_last4').value.trim();
+    const disc = parseFloat(document.getElementById('cf_disc').value) || 0;
+    if (!company || !last4) { alert('카드회사 이름과 뒷번호를 입력하세요.'); return; }
+    const cards = loadCards();
+    cards.push({ company, last4, disc });
+    saveCards(cards);
+    document.getElementById('cf_company').value = '';
+    document.getElementById('cf_last4').value = '';
+    document.getElementById('cf_disc').value = '';
+    document.getElementById('cardForm').classList.remove('show');
+    renderCards();
+    document.getElementById('cardSelect').value = cards.length - 1;
+    applySelectedCard();
+  });
+
+  document.getElementById('delCardBtn').addEventListener('click', () => {
+    const cards = loadCards();
+    const i = document.getElementById('cardSelect').value;
+    if (i === '' || !cards[i]) { alert('삭제할 카드를 고르세요.'); return; }
+    if (!confirm(`${cards[i].company} ${cards[i].last4} 카드를 삭제할까요?`)) return;
+    cards.splice(i, 1);
+    saveCards(cards);
+    renderCards();
+  });
+
+  document.getElementById('cardSelect').addEventListener('change', applySelectedCard);
+
+  // ---------- 결제 방식 ----------
+  let payMode = 'lump';
+  document.querySelectorAll('#payPills .pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('#payPills .pill').forEach(x => x.classList.remove('on'));
+      p.classList.add('on');
+      payMode = p.dataset.v;
+      document.getElementById('installBox').classList.toggle('hide', payMode !== 'install');
+      calc();
+    });
+  });
+
+  // ---------- 계산 ----------
+  function fmt(n) {
+    if (!isFinite(n)) return '0';
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+
+  function calc() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const disc = parseFloat(document.getElementById('discount').value) || 0;
+    const margin = parseFloat(document.getElementById('margin').value) || 0;
+
+    const original = amount / (1 - disc / 100);
+
+    let fee = 0;
+    if (payMode === 'install') {
+      const months = parseFloat(document.getElementById('months').value) || 0;
+      const rate = parseFloat(document.getElementById('rate').value) || 0;
+      fee = amount * (rate / 100 / 12) * (months + 1) / 2;
+    }
+
+    const cost = original + fee;
+    const final = cost * (1 + margin / 100);
+    const marginAmt = final - cost;
+
+    document.getElementById('original').textContent = fmt(original);
+    document.getElementById('fee').textContent = fmt(fee);
+    document.getElementById('cost').textContent = fmt(cost);
+    document.getElementById('marginAmt').textContent = fmt(marginAmt);
+    document.getElementById('final').textContent = fmt(final);
+
+    document.getElementById('feeRow').style.display = (payMode === 'install') ? 'flex' : 'none';
+  }
+
+  ['amount','discount','margin','months','rate'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calc);
+  });
+
+  renderCards();
+  calc();
+</script>
+</body>
+</html>
